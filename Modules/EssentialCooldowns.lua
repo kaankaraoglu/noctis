@@ -82,23 +82,32 @@ end
 -- Module Lifecycle
 ------------------------------------------------------------------------
 
+local MAX_RETRIES = 10
+local RETRY_INTERVAL = 2
+
 function EssentialCooldowns:OnEnable(db) -- luacheck: ignore 212/self
     cooldownFrame = FindCooldownFrame()
-    if not cooldownFrame then
-        -- Frame not found — may not be in the UI yet. Retry after a short delay.
-        C_Timer.After(1, function()
-            cooldownFrame = FindCooldownFrame()
-            if cooldownFrame then
-                InstallFaderHooks(db)
-                ApplyFaderAlpha(db)
-            else
-                print("|cFFFF6600Noctis:|r Essential Cooldowns frame not found. The fader feature is disabled.")
-            end
-        end)
+    if cooldownFrame then
+        InstallFaderHooks(db)
+        ApplyFaderAlpha(db)
         return
     end
-    InstallFaderHooks(db)
-    ApplyFaderAlpha(db)
+
+    -- Frame not found — Blizzard_CooldownViewer may load late. Retry periodically.
+    local retries = 0
+    local function RetryDiscovery()
+        retries = retries + 1
+        cooldownFrame = FindCooldownFrame()
+        if cooldownFrame then
+            InstallFaderHooks(db)
+            ApplyFaderAlpha(db)
+        elseif retries < MAX_RETRIES then
+            C_Timer.After(RETRY_INTERVAL, RetryDiscovery)
+        else
+            print("|cFFFF6600Noctis:|r Essential Cooldowns frame not found after " .. MAX_RETRIES .. " attempts. The fader feature is disabled.")
+        end
+    end
+    C_Timer.After(RETRY_INTERVAL, RetryDiscovery)
 end
 
 function EssentialCooldowns:OnDisable() -- luacheck: ignore 212/self
