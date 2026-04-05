@@ -6,16 +6,17 @@ local Noctis = ns
 ------------------------------------------------------------------------
 
 local function InitializeSettings()
-    local category, layout = Settings.RegisterVerticalLayoutCategory("Noctis")
+    local category = Settings.RegisterVerticalLayoutCategory("Noctis")
     Noctis.categoryID = category:GetID()
 
-    -- Let each module register its own settings
+    -- Each module gets its own subcategory under Noctis
     for name, module in pairs(Noctis.modules) do
         local db = Noctis.db.modules[name]
         if db and module.RegisterSettings then
-            -- Add a header for the module
-            layout:AddInitializer(CreateSettingsListSectionHeaderInitializer(module.displayName))
-            module:RegisterSettings(category, layout, db)
+            local subcategory, subLayout = Settings.RegisterVerticalLayoutSubcategory(
+                category, module.displayName
+            )
+            module:RegisterSettings(subcategory, subLayout, db)
         end
     end
 
