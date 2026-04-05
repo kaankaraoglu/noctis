@@ -248,7 +248,7 @@ end
 -- Settings Registration
 ------------------------------------------------------------------------
 
-function Fader:RegisterSettings(category, layout, db) -- luacheck: ignore 212/self 212/layout
+function Fader:RegisterSettings(category, layout, db) -- luacheck: ignore 212/self
     -- Master toggle
     do
         local setting = Settings.RegisterAddOnSetting(
@@ -293,6 +293,7 @@ function Fader:RegisterSettings(category, layout, db) -- luacheck: ignore 212/se
     end
 
     -- Per-element toggles
+    layout:AddInitializer(CreateSettingsListSectionHeaderInitializer("Elements"))
     for _, descriptor in ipairs(Noctis.faderElements) do
         local elemDB = db.elements[descriptor.key]
         if elemDB then
