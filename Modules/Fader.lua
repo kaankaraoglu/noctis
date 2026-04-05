@@ -271,7 +271,7 @@ function Fader:RegisterSettings(category, layout, db) -- luacheck: ignore 212/se
                 RestoreAlphaToAll()
             end
         end)
-        Settings.CreateCheckbox(category, setting, "Enable or disable fading on all UI elements")
+        Settings.CreateCheckbox(category, setting, "Enable")
     end
 
     -- Shared opacity slider
@@ -293,7 +293,7 @@ function Fader:RegisterSettings(category, layout, db) -- luacheck: ignore 212/se
         options:SetLabelFormatter(MinimalSliderWithSteppersMixin.Label.Right, function(value)
             return string.format("%.0f%%", value * 100)
         end)
-        Settings.CreateSlider(category, setting, options, "Resting opacity for all faded elements")
+        Settings.CreateSlider(category, setting, options, "Resting Opacity")
     end
 
     -- Per-element toggles
