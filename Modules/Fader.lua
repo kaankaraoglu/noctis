@@ -20,7 +20,6 @@ local Fader = {
 ------------------------------------------------------------------------
 
 local FADE_DURATION = 0.2
-local LEAVE_CHECK_INTERVAL = 0.05
 local MAX_RETRIES = 10
 local RETRY_INTERVAL = 2
 
@@ -33,7 +32,7 @@ local RETRY_INTERVAL = 2
 ---@field frame table|nil
 ---@field hooksInstalled boolean
 ---@field isMouseOver boolean
----@field leaveCheckTicker table|nil
+---@field hoverTicker table|nil
 
 local elementStates = {}
 
@@ -96,64 +95,47 @@ local function FadeOutElement(state, db)
 end
 
 ------------------------------------------------------------------------
--- Leave-Check Polling (per element)
+-- Hover Monitor
+-- Uses a polling ticker to detect mouse enter/leave on the entire
+-- frame tree. This handles dynamically created children (e.g. quest
+-- blocks in the Objective Tracker) without needing to hook every frame.
 ------------------------------------------------------------------------
 
-local function StopLeaveCheck(state)
-    if state.leaveCheckTicker then
-        state.leaveCheckTicker:Cancel()
-        state.leaveCheckTicker = nil
+local HOVER_POLL_INTERVAL = 0.05
+
+local function StopHoverMonitor(state)
+    if state.hoverTicker then
+        state.hoverTicker:Cancel()
+        state.hoverTicker = nil
     end
 end
 
-local function StartLeaveCheck(state, db)
-    if state.leaveCheckTicker then return end
-    state.leaveCheckTicker = C_Timer.NewTicker(LEAVE_CHECK_INTERVAL, function()
-        if not IsMouseOverElement(state) then
+local function StartHoverMonitor(state, db)
+    if state.hoverTicker then return end
+    state.hoverTicker = C_Timer.NewTicker(HOVER_POLL_INTERVAL, function()
+        if not IsElementEnabled(db, state.descriptor.key) then
+            if state.isMouseOver then
+                state.isMouseOver = false
+            end
+            return
+        end
+
+        local over = IsMouseOverElement(state)
+        if over and not state.isMouseOver then
+            state.isMouseOver = true
+            FadeInElement(state, db)
+        elseif not over and state.isMouseOver then
             state.isMouseOver = false
             FadeOutElement(state, db)
-            StopLeaveCheck(state)
         end
     end)
 end
 
-------------------------------------------------------------------------
--- Hook Installation
-------------------------------------------------------------------------
-
-local function HookFrame(frame, state, db)
-    frame:HookScript("OnEnter", function()
-        if not IsElementEnabled(db, state.descriptor.key) then return end
-        if not state.isMouseOver then
-            state.isMouseOver = true
-            StopLeaveCheck(state)
-            FadeInElement(state, db)
-        end
-    end)
-    frame:HookScript("OnLeave", function()
-        if not IsElementEnabled(db, state.descriptor.key) then return end
-        StartLeaveCheck(state, db)
-    end)
-end
-
---- Recursively hook a frame and all its descendants.
-local function HookFrameRecursive(frame, state, db)
-    HookFrame(frame, state, db)
-    for _, child in ipairs({ frame:GetChildren() }) do
-        HookFrameRecursive(child, state, db)
-    end
-end
-
-local function InstallHooks(state, db)
+local function InstallHoverMonitor(state, db)
     if state.hooksInstalled then return end
     if not state.frame then return end
     state.hooksInstalled = true
-
-    if state.descriptor.hookChildren then
-        HookFrameRecursive(state.frame, state, db)
-    else
-        HookFrame(state.frame, state, db)
-    end
+    StartHoverMonitor(state, db)
 end
 
 ------------------------------------------------------------------------
@@ -173,7 +155,7 @@ end
 local function DiscoverElement(state, db)
     state.frame = FindFrame(state.descriptor.frameCandidates)
     if state.frame then
-        InstallHooks(state, db)
+        InstallHoverMonitor(state, db)
         if IsElementEnabled(db, state.descriptor.key) then
             Noctis:SetSafeAlpha(state.frame, db.alpha)
         end
@@ -234,7 +216,7 @@ function Fader:OnEnable(db) -- luacheck: ignore 212/self
             frame = nil,
             hooksInstalled = false,
             isMouseOver = false,
-            leaveCheckTicker = nil,
+            hoverTicker = nil,
         }
 
         DiscoverElementWithRetry(elementStates[descriptor.key], db)
@@ -255,7 +237,7 @@ end
 
 function Fader:OnDisable() -- luacheck: ignore 212/self
     for _, state in pairs(elementStates) do
-        StopLeaveCheck(state)
+        StopHoverMonitor(state)
         if state.frame then
             Noctis:SetSafeAlpha(state.frame, 1.0)
         end
