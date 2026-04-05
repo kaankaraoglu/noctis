@@ -56,7 +56,7 @@ end
 ---@param frame table
 ---@return boolean
 local function IsMouseOverRecursive(frame)
-    if frame:IsMouseOver() then return true end
+    if not frame:HasSecretValues() and frame:IsMouseOver() then return true end
     for _, child in ipairs({ frame:GetChildren() }) do
         if IsMouseOverRecursive(child) then return true end
     end
@@ -68,6 +68,7 @@ local function IsMouseOverElement(state)
     if state.descriptor.hookChildren then
         return IsMouseOverRecursive(state.frame)
     end
+    if state.frame:HasSecretValues() then return false end
     return state.frame:IsMouseOver()
 end
 
