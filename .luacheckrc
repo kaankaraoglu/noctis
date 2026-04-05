@@ -33,6 +33,7 @@ read_globals = {
     "ADDON_RESTRICTION_STATE_CHANGED",
     "C_EventUtils",
     "CreateSettingsListSectionHeaderInitializer",
+    "MinimalSliderWithSteppersMixin",
     -- Varargs
     "...",
 }
