@@ -31,6 +31,7 @@ read_globals = {
     "GameTooltip",
     "LibStub",
     "ADDON_RESTRICTION_STATE_CHANGED",
+    "C_EventUtils",
     -- Varargs
     "...",
 }
