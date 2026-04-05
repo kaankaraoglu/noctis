@@ -32,6 +32,7 @@ read_globals = {
     "LibStub",
     "ADDON_RESTRICTION_STATE_CHANGED",
     "C_EventUtils",
+    "CreateSettingsListSectionHeaderInitializer",
     -- Varargs
     "...",
 }
