@@ -29,9 +29,7 @@ local hooksInstalled = false
 ------------------------------------------------------------------------
 
 local FRAME_CANDIDATES = {
-    "CooldownManagerFrame",
-    "PlayerCooldownManager",
-    "CooldownManagerContainer",
+    "EssentialCooldownViewer",
 }
 
 local function FindCooldownFrame()
