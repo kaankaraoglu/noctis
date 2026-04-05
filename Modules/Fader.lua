@@ -71,6 +71,22 @@ local function IsMouseOverElement(state)
 end
 
 ------------------------------------------------------------------------
+-- Group Hover State
+------------------------------------------------------------------------
+
+--- Returns true if any enabled element is currently hovered.
+---@param db table
+---@return boolean
+local function IsAnyElementHovered(db)
+    for key, state in pairs(elementStates) do
+        if IsElementEnabled(db, key) and state.isMouseOver then
+            return true
+        end
+    end
+    return false
+end
+
+------------------------------------------------------------------------
 -- Fade Animations
 ------------------------------------------------------------------------
 
@@ -91,6 +107,22 @@ local function FadeOutElement(state, db)
         UIFrameFadeOut(state.frame, FADE_DURATION, state.frame:GetAlpha(), db.alpha)
     else
         Noctis:SetSafeAlpha(state.frame, db.alpha)
+    end
+end
+
+--- Fade all enabled elements in.
+---@param db table
+local function FadeInAll(db)
+    for _, state in pairs(elementStates) do
+        FadeInElement(state, db)
+    end
+end
+
+--- Fade all enabled elements out.
+---@param db table
+local function FadeOutAll(db)
+    for _, state in pairs(elementStates) do
+        FadeOutElement(state, db)
     end
 end
 
@@ -123,12 +155,16 @@ local function StartHoverMonitor(state, db)
         local over = IsMouseOverElement(state)
         if over and not state.isMouseOver then
             state.isMouseOver = true
-            FadeInElement(state, db)
+            -- Fade ALL enabled elements in when any element is entered
+            FadeInAll(db)
         elseif not over then
             if state.isMouseOver then
                 state.isMouseOver = false
-                FadeOutElement(state, db)
-            elseif state.frame:GetAlpha() ~= db.alpha then
+                -- Only fade all out if no other element is still hovered
+                if not IsAnyElementHovered(db) then
+                    FadeOutAll(db)
+                end
+            elseif not IsAnyElementHovered(db) and state.frame:GetAlpha() ~= db.alpha then
                 -- Blizzard code may reset alpha (e.g. quest updates).
                 -- Re-enforce the resting alpha when not hovered.
                 Noctis:SetSafeAlpha(state.frame, db.alpha)
@@ -144,7 +180,7 @@ local function InstallAlphaGuard(state, db)
     hooksecurefunc(state.frame, "SetAlpha", function()
         if suppressGuard then return end
         if not IsElementEnabled(db, state.descriptor.key) then return end
-        if state.isMouseOver then return end
+        if IsAnyElementHovered(db) then return end
         if InCombatLockdown() then return end
 
         local target = db.alpha
