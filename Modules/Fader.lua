@@ -306,7 +306,7 @@ function Fader:RegisterSettings(category, layout, db) -- luacheck: ignore 212/se
                 "enabled",
                 elemDB,
                 type(true),
-                "Enable or disable fading for " .. descriptor.displayName,
+                descriptor.displayName,
                 descriptor.defaultEnabled
             )
             setting:SetValueChangedCallback(function(_, value)
