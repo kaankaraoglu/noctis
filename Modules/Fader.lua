@@ -124,9 +124,15 @@ local function StartHoverMonitor(state, db)
         if over and not state.isMouseOver then
             state.isMouseOver = true
             FadeInElement(state, db)
-        elseif not over and state.isMouseOver then
-            state.isMouseOver = false
-            FadeOutElement(state, db)
+        elseif not over then
+            if state.isMouseOver then
+                state.isMouseOver = false
+                FadeOutElement(state, db)
+            elseif state.frame:GetAlpha() ~= db.alpha then
+                -- Blizzard code may reset alpha (e.g. quest updates).
+                -- Re-enforce the resting alpha when not hovered.
+                Noctis:SetSafeAlpha(state.frame, db.alpha)
+            end
         end
     end)
 end
