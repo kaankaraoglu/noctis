@@ -65,6 +65,10 @@ local function IsMouseOverCooldownFrame()
     return false
 end
 
+local LEAVE_CHECK_INTERVAL = 0.05
+local leaveCheckTicker = nil
+local isMouseOver = false
+
 local function FadeIn(db)
     if not db.fader.enabled then return end
     if UIFrameFadeIn then
@@ -83,15 +87,48 @@ local function FadeOut(db)
     end
 end
 
+--- Start a polling ticker that checks if the mouse truly left.
+--- Fires every 50ms until the mouse is confirmed gone, then fades out.
+local function StartLeaveCheck(db)
+    if leaveCheckTicker then return end
+    leaveCheckTicker = C_Timer.NewTicker(LEAVE_CHECK_INTERVAL, function()
+        if not IsMouseOverCooldownFrame() then
+            isMouseOver = false
+            FadeOut(db)
+            if leaveCheckTicker then
+                leaveCheckTicker:Cancel()
+                leaveCheckTicker = nil
+            end
+        end
+    end)
+end
+
+local function StopLeaveCheck()
+    if leaveCheckTicker then
+        leaveCheckTicker:Cancel()
+        leaveCheckTicker = nil
+    end
+end
+
+local function OnAnyEnter(db)
+    if not isMouseOver then
+        isMouseOver = true
+        StopLeaveCheck()
+        FadeIn(db)
+    end
+end
+
+local function OnAnyLeave(db)
+    -- Don't fade immediately — start polling to catch fast mouse exits
+    StartLeaveCheck(db)
+end
+
 local function HookFrame(frame, db)
     frame:HookScript("OnEnter", function()
-        FadeIn(db)
+        OnAnyEnter(db)
     end)
     frame:HookScript("OnLeave", function()
-        -- Only fade out if the mouse has truly left the entire cooldown area
-        if not IsMouseOverCooldownFrame() then
-            FadeOut(db)
-        end
+        OnAnyLeave(db)
     end)
 end
 
