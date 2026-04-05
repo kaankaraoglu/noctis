@@ -11,6 +11,7 @@ local Fader = {
     defaults = {
         enabled = true,
         alpha = 0.3,
+        linkHover = true,
         elements = {},
     },
 }
@@ -153,18 +154,25 @@ local function StartHoverMonitor(state, db)
         end
 
         local over = IsMouseOverElement(state)
+        local linked = db.linkHover
         if over and not state.isMouseOver then
             state.isMouseOver = true
-            -- Fade ALL enabled elements in when any element is entered
-            FadeInAll(db)
+            if linked then
+                FadeInAll(db)
+            else
+                FadeInElement(state, db)
+            end
         elseif not over then
             if state.isMouseOver then
                 state.isMouseOver = false
-                -- Only fade all out if no other element is still hovered
-                if not IsAnyElementHovered(db) then
-                    FadeOutAll(db)
+                if linked then
+                    if not IsAnyElementHovered(db) then
+                        FadeOutAll(db)
+                    end
+                else
+                    FadeOutElement(state, db)
                 end
-            elseif not IsAnyElementHovered(db) and state.frame:GetAlpha() ~= db.alpha then
+            elseif (not linked or not IsAnyElementHovered(db)) and state.frame:GetAlpha() ~= db.alpha then
                 -- Blizzard code may reset alpha (e.g. quest updates).
                 -- Re-enforce the resting alpha when not hovered.
                 Noctis:SetSafeAlpha(state.frame, db.alpha)
@@ -180,7 +188,8 @@ local function InstallAlphaGuard(state, db)
     hooksecurefunc(state.frame, "SetAlpha", function()
         if suppressGuard then return end
         if not IsElementEnabled(db, state.descriptor.key) then return end
-        if IsAnyElementHovered(db) then return end
+        if db.linkHover and IsAnyElementHovered(db) then return end
+        if not db.linkHover and state.isMouseOver then return end
         if InCombatLockdown() then return end
 
         local target = db.alpha
@@ -352,6 +361,20 @@ function Fader:RegisterSettings(category, layout, db) -- luacheck: ignore 212/se
             return string.format("%.0f%%", value * 100)
         end)
         Settings.CreateSlider(category, setting, options, "Resting opacity for all faded elements (0 = invisible, 1 = fully visible)")
+    end
+
+    -- Linked hover toggle
+    do
+        local setting = Settings.RegisterAddOnSetting(
+            category,
+            "Link Hover",
+            "linkHover",
+            db,
+            type(true),
+            "Link Hover",
+            Fader.defaults.linkHover
+        )
+        Settings.CreateCheckbox(category, setting, "Hovering any element reveals all elements")
     end
 
     -- Per-element toggles
