@@ -137,10 +137,30 @@ local function StartHoverMonitor(state, db)
     end)
 end
 
+--- Hook SetAlpha on the frame to immediately re-apply resting alpha
+--- whenever Blizzard code overrides it (e.g. quest tracker updates).
+local function InstallAlphaGuard(state, db)
+    local suppressGuard = false
+    hooksecurefunc(state.frame, "SetAlpha", function()
+        if suppressGuard then return end
+        if not IsElementEnabled(db, state.descriptor.key) then return end
+        if state.isMouseOver then return end
+        if InCombatLockdown() then return end
+
+        local target = db.alpha
+        if state.frame:GetAlpha() ~= target then
+            suppressGuard = true
+            state.frame:SetAlpha(target)
+            suppressGuard = false
+        end
+    end)
+end
+
 local function InstallHoverMonitor(state, db)
     if state.hooksInstalled then return end
     if not state.frame then return end
     state.hooksInstalled = true
+    InstallAlphaGuard(state, db)
     StartHoverMonitor(state, db)
 end
 
