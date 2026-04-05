@@ -1,0 +1,29 @@
+# UE5 Build artifacts
+Binaries/
+Intermediate/
+DerivedDataCache/
+Build/
+
+# UE5 Saved data (local preferences, autosaves, logs)
+Saved/
+
+# Xcode workspace
+*.xcworkspace/
+*.xcodeproj/
+
+# macOS
+.DS_Store
+*.swp
+*~
+
+# Visual Studio / Rider
+.vs/
+.idea/
+*.sln
+*.suo
+*.user
+
+# Compiled assets (cooked content)
+*.obb
+*.apk
+*.aab
