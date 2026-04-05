@@ -14,14 +14,6 @@ Noctis:RegisterFaderElement({
 })
 
 Noctis:RegisterFaderElement({
-    key = "ObjectiveTracker",
-    displayName = "Objective Tracker",
-    frameCandidates = { "ObjectiveTrackerFrame" },
-    hookChildren = true,
-    defaultEnabled = true,
-})
-
-Noctis:RegisterFaderElement({
     key = "PlayerFrame",
     displayName = "Player Frame",
     frameCandidates = { "PlayerFrame" },
