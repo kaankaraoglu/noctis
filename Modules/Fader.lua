@@ -52,15 +52,23 @@ end
 --- Check if the mouse is over a frame or any of its children.
 ---@param state FaderElementState
 ---@return boolean
-local function IsMouseOverElement(state)
-    if not state.frame then return false end
-    if state.frame:IsMouseOver() then return true end
-    if state.descriptor.hookChildren then
-        for _, child in ipairs({ state.frame:GetChildren() }) do
-            if child:IsMouseOver() then return true end
-        end
+--- Recursively check if the mouse is over a frame or any descendant.
+---@param frame table
+---@return boolean
+local function IsMouseOverRecursive(frame)
+    if frame:IsMouseOver() then return true end
+    for _, child in ipairs({ frame:GetChildren() }) do
+        if IsMouseOverRecursive(child) then return true end
     end
     return false
+end
+
+local function IsMouseOverElement(state)
+    if not state.frame then return false end
+    if state.descriptor.hookChildren then
+        return IsMouseOverRecursive(state.frame)
+    end
+    return state.frame:IsMouseOver()
 end
 
 ------------------------------------------------------------------------
@@ -128,17 +136,23 @@ local function HookFrame(frame, state, db)
     end)
 end
 
+--- Recursively hook a frame and all its descendants.
+local function HookFrameRecursive(frame, state, db)
+    HookFrame(frame, state, db)
+    for _, child in ipairs({ frame:GetChildren() }) do
+        HookFrameRecursive(child, state, db)
+    end
+end
+
 local function InstallHooks(state, db)
     if state.hooksInstalled then return end
     if not state.frame then return end
     state.hooksInstalled = true
 
-    HookFrame(state.frame, state, db)
-
     if state.descriptor.hookChildren then
-        for _, child in ipairs({ state.frame:GetChildren() }) do
-            HookFrame(child, state, db)
-        end
+        HookFrameRecursive(state.frame, state, db)
+    else
+        HookFrame(state.frame, state, db)
     end
 end
 
