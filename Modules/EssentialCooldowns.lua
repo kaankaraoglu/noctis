@@ -54,28 +54,59 @@ local function ApplyFaderAlpha(db)
     Noctis:SetSafeAlpha(cooldownFrame, db.fader.alpha)
 end
 
+--- Check if the mouse is over the cooldown frame or any of its children.
+---@return boolean
+local function IsMouseOverCooldownFrame()
+    if not cooldownFrame then return false end
+    if cooldownFrame:IsMouseOver() then return true end
+    for _, child in ipairs({ cooldownFrame:GetChildren() }) do
+        if child:IsMouseOver() then return true end
+    end
+    return false
+end
+
+local function FadeIn(db)
+    if not db.fader.enabled then return end
+    if UIFrameFadeIn then
+        UIFrameFadeIn(cooldownFrame, FADE_DURATION, cooldownFrame:GetAlpha(), 1.0)
+    else
+        Noctis:SetSafeAlpha(cooldownFrame, 1.0)
+    end
+end
+
+local function FadeOut(db)
+    if not db.fader.enabled then return end
+    if UIFrameFadeOut then
+        UIFrameFadeOut(cooldownFrame, FADE_DURATION, cooldownFrame:GetAlpha(), db.fader.alpha)
+    else
+        Noctis:SetSafeAlpha(cooldownFrame, db.fader.alpha)
+    end
+end
+
+local function HookFrame(frame, db)
+    frame:HookScript("OnEnter", function()
+        FadeIn(db)
+    end)
+    frame:HookScript("OnLeave", function()
+        -- Only fade out if the mouse has truly left the entire cooldown area
+        if not IsMouseOverCooldownFrame() then
+            FadeOut(db)
+        end
+    end)
+end
+
 local function InstallFaderHooks(db)
     if hooksInstalled then return end
     if not cooldownFrame then return end
     hooksInstalled = true
 
-    cooldownFrame:HookScript("OnEnter", function()
-        if not db.fader.enabled then return end
-        if UIFrameFadeIn then
-            UIFrameFadeIn(cooldownFrame, FADE_DURATION, cooldownFrame:GetAlpha(), 1.0)
-        else
-            Noctis:SetSafeAlpha(cooldownFrame, 1.0)
-        end
-    end)
+    -- Hook the parent container
+    HookFrame(cooldownFrame, db)
 
-    cooldownFrame:HookScript("OnLeave", function()
-        if not db.fader.enabled then return end
-        if UIFrameFadeOut then
-            UIFrameFadeOut(cooldownFrame, FADE_DURATION, cooldownFrame:GetAlpha(), db.fader.alpha)
-        else
-            Noctis:SetSafeAlpha(cooldownFrame, db.fader.alpha)
-        end
-    end)
+    -- Hook all existing children (cooldown icons)
+    for _, child in ipairs({ cooldownFrame:GetChildren() }) do
+        HookFrame(child, db)
+    end
 end
 
 ------------------------------------------------------------------------
