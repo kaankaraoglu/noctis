@@ -15,4 +15,5 @@ Libs\LibDBIcon-1.0\LibDBIcon-1.0.lua
 
 Core.lua
 Config.lua
+Modules\Fader.lua
 Modules\EssentialCooldowns.lua

@@ -41,6 +41,26 @@ end
 Noctis.DeepMergeMissing = DeepMergeMissing
 
 ------------------------------------------------------------------------
+-- Fader Element Registry
+-- Modules call RegisterFaderElement() at load time to enroll frames
+-- in the shared fader system. Consumed by Modules/Fader.lua on enable.
+------------------------------------------------------------------------
+
+---@class FaderElementDescriptor
+---@field key string                    -- unique key, e.g. "EssentialCooldowns"
+---@field displayName string            -- label in settings panel
+---@field frameCandidates string[]      -- global frame names to try via _G
+---@field hookChildren boolean          -- whether to hook child frames too
+---@field defaultEnabled boolean        -- default for per-element toggle
+
+Noctis.faderElements = {}
+
+---@param descriptor FaderElementDescriptor
+function Noctis:RegisterFaderElement(descriptor)
+    self.faderElements[#self.faderElements + 1] = descriptor
+end
+
+------------------------------------------------------------------------
 -- Module Registry
 ------------------------------------------------------------------------
 

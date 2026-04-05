@@ -2,7 +2,19 @@ local _, ns = ...
 local Noctis = ns
 
 ------------------------------------------------------------------------
--- Module Definition
+-- Register frame for the shared fader system
+------------------------------------------------------------------------
+
+Noctis:RegisterFaderElement({
+    key = "EssentialCooldowns",
+    displayName = "Essential Cooldowns",
+    frameCandidates = { "EssentialCooldownViewer" },
+    hookChildren = true,
+    defaultEnabled = true,
+})
+
+------------------------------------------------------------------------
+-- Module skeleton for future non-fader features
 ------------------------------------------------------------------------
 
 local EssentialCooldowns = {
@@ -10,261 +22,10 @@ local EssentialCooldowns = {
     displayName = "Essential Cooldowns",
     defaults = {
         enabled = true,
-        fader = {
-            enabled = true,
-            alpha = 0.3,
-        },
     },
 }
 
--- Frame reference cache
-local cooldownFrame = nil
--- Track whether hooks have been installed (HookScript can't be undone)
-local hooksInstalled = false
-
-------------------------------------------------------------------------
--- Frame Discovery
--- The Cooldown Manager was added in 11.1.5. The frame name must be
--- verified in-game with /framestack. We try known candidates.
-------------------------------------------------------------------------
-
-local FRAME_CANDIDATES = {
-    "EssentialCooldownViewer",
-}
-
-local function FindCooldownFrame()
-    for _, name in ipairs(FRAME_CANDIDATES) do
-        local frame = _G[name]
-        if frame and type(frame.SetAlpha) == "function" then
-            return frame
-        end
-    end
-    return nil
-end
-
-------------------------------------------------------------------------
--- Fader Feature
-------------------------------------------------------------------------
-
-local FADE_DURATION = 0.2
-
-local function ApplyFaderAlpha(db)
-    if not cooldownFrame then return end
-    if not db.fader.enabled then return end
-    Noctis:SetSafeAlpha(cooldownFrame, db.fader.alpha)
-end
-
---- Check if the mouse is over the cooldown frame or any of its children.
----@return boolean
-local function IsMouseOverCooldownFrame()
-    if not cooldownFrame then return false end
-    if cooldownFrame:IsMouseOver() then return true end
-    for _, child in ipairs({ cooldownFrame:GetChildren() }) do
-        if child:IsMouseOver() then return true end
-    end
-    return false
-end
-
-local LEAVE_CHECK_INTERVAL = 0.05
-local leaveCheckTicker = nil
-local isMouseOver = false
-
-local function FadeIn(db)
-    if not db.fader.enabled then return end
-    if UIFrameFadeIn then
-        UIFrameFadeIn(cooldownFrame, FADE_DURATION, cooldownFrame:GetAlpha(), 1.0)
-    else
-        Noctis:SetSafeAlpha(cooldownFrame, 1.0)
-    end
-end
-
-local function FadeOut(db)
-    if not db.fader.enabled then return end
-    if UIFrameFadeOut then
-        UIFrameFadeOut(cooldownFrame, FADE_DURATION, cooldownFrame:GetAlpha(), db.fader.alpha)
-    else
-        Noctis:SetSafeAlpha(cooldownFrame, db.fader.alpha)
-    end
-end
-
---- Start a polling ticker that checks if the mouse truly left.
---- Fires every 50ms until the mouse is confirmed gone, then fades out.
-local function StartLeaveCheck(db)
-    if leaveCheckTicker then return end
-    leaveCheckTicker = C_Timer.NewTicker(LEAVE_CHECK_INTERVAL, function()
-        if not IsMouseOverCooldownFrame() then
-            isMouseOver = false
-            FadeOut(db)
-            if leaveCheckTicker then
-                leaveCheckTicker:Cancel()
-                leaveCheckTicker = nil
-            end
-        end
-    end)
-end
-
-local function StopLeaveCheck()
-    if leaveCheckTicker then
-        leaveCheckTicker:Cancel()
-        leaveCheckTicker = nil
-    end
-end
-
-local function OnAnyEnter(db)
-    if not isMouseOver then
-        isMouseOver = true
-        StopLeaveCheck()
-        FadeIn(db)
-    end
-end
-
-local function OnAnyLeave(db)
-    -- Don't fade immediately — start polling to catch fast mouse exits
-    StartLeaveCheck(db)
-end
-
-local function HookFrame(frame, db)
-    frame:HookScript("OnEnter", function()
-        OnAnyEnter(db)
-    end)
-    frame:HookScript("OnLeave", function()
-        OnAnyLeave(db)
-    end)
-end
-
-local function InstallFaderHooks(db)
-    if hooksInstalled then return end
-    if not cooldownFrame then return end
-    hooksInstalled = true
-
-    -- Hook the parent container
-    HookFrame(cooldownFrame, db)
-
-    -- Hook all existing children (cooldown icons)
-    for _, child in ipairs({ cooldownFrame:GetChildren() }) do
-        HookFrame(child, db)
-    end
-end
-
-------------------------------------------------------------------------
--- Module Lifecycle
-------------------------------------------------------------------------
-
-local MAX_RETRIES = 10
-local RETRY_INTERVAL = 2
-
-function EssentialCooldowns:OnEnable(db) -- luacheck: ignore 212/self
-    cooldownFrame = FindCooldownFrame()
-    if cooldownFrame then
-        InstallFaderHooks(db)
-        ApplyFaderAlpha(db)
-        return
-    end
-
-    -- Frame not found — Blizzard_CooldownViewer may load late. Retry periodically.
-    local retries = 0
-    local function RetryDiscovery()
-        retries = retries + 1
-        cooldownFrame = FindCooldownFrame()
-        if cooldownFrame then
-            InstallFaderHooks(db)
-            ApplyFaderAlpha(db)
-        elseif retries < MAX_RETRIES then
-            C_Timer.After(RETRY_INTERVAL, RetryDiscovery)
-        else
-            print("|cFFFF6600Noctis:|r Essential Cooldowns frame not found after " .. MAX_RETRIES .. " attempts. The fader feature is disabled.")
-        end
-    end
-    C_Timer.After(RETRY_INTERVAL, RetryDiscovery)
-end
-
-function EssentialCooldowns:OnDisable() -- luacheck: ignore 212/self
-    -- Restore full opacity. Hooks will no-op because db.fader.enabled
-    -- is checked inside them (controlled by the parent module toggle).
-    if cooldownFrame then
-        Noctis:SetSafeAlpha(cooldownFrame, 1.0)
-    end
-end
-
-------------------------------------------------------------------------
--- Settings Registration
-------------------------------------------------------------------------
-
-function EssentialCooldowns:RegisterSettings(category, layout, db)
-    -- Module master toggle
-    do
-        local setting = Settings.RegisterAddOnSetting(
-            category,
-            "Enable Essential Cooldowns",
-            "enabled",
-            db,
-            type(true),
-            "Enable or disable all Essential Cooldowns customizations",
-            self.defaults.enabled
-        )
-        setting:SetValueChangedCallback(function(_, value)
-            if value then
-                self:OnEnable(db)
-            else
-                self:OnDisable()
-            end
-        end)
-        Settings.CreateCheckbox(category, setting, "Enable or disable all Essential Cooldowns customizations")
-    end
-
-    -- Fader sub-header
-    layout:AddInitializer(CreateSettingsListSectionHeaderInitializer("Fader"))
-
-    -- Fader enable toggle
-    do
-        local setting = Settings.RegisterAddOnSetting(
-            category,
-            "Enable Fader",
-            "enabled",
-            db.fader,
-            type(true),
-            "Fade the Essential Cooldowns bar to a resting opacity",
-            self.defaults.fader.enabled
-        )
-        setting:SetValueChangedCallback(function(_, value)
-            if not cooldownFrame then return end
-            if value then
-                ApplyFaderAlpha(db)
-            else
-                Noctis:SetSafeAlpha(cooldownFrame, 1.0)
-            end
-        end)
-        Settings.CreateCheckbox(category, setting, "Fade the Essential Cooldowns bar to a resting opacity")
-    end
-
-    -- Resting opacity slider
-    do
-        local setting = Settings.RegisterAddOnSetting(
-            category,
-            "Resting Opacity",
-            "alpha",
-            db.fader,
-            type(0.0),
-            "Opacity of the Essential Cooldowns bar when not hovered (0 = invisible, 1 = fully visible)",
-            self.defaults.fader.alpha
-        )
-        setting:SetValueChangedCallback(function(_, value)
-            if not cooldownFrame then return end
-            if db.fader.enabled then
-                Noctis:SetSafeAlpha(cooldownFrame, value)
-            end
-        end)
-
-        local options = Settings.CreateSliderOptions(0, 1, 0.05)
-        options:SetLabelFormatter(MinimalSliderWithSteppersMixin.Label.Right, function(value)
-            return string.format("%.0f%%", value * 100)
-        end)
-        Settings.CreateSlider(category, setting, options, "Opacity when not hovered")
-    end
-end
-
-------------------------------------------------------------------------
--- Register with Noctis core
-------------------------------------------------------------------------
+function EssentialCooldowns:OnEnable() end   -- luacheck: ignore 212/self
+function EssentialCooldowns:OnDisable() end  -- luacheck: ignore 212/self
 
 Noctis:RegisterModule(EssentialCooldowns)
