@@ -12,20 +12,3 @@ Noctis:RegisterFaderElement({
     hookChildren = true,
     defaultEnabled = true,
 })
-
-------------------------------------------------------------------------
--- Module skeleton for future non-fader features
-------------------------------------------------------------------------
-
-local EssentialCooldowns = {
-    name = "EssentialCooldowns",
-    displayName = "Essential Cooldowns",
-    defaults = {
-        enabled = true,
-    },
-}
-
-function EssentialCooldowns:OnEnable() end   -- luacheck: ignore 212/self
-function EssentialCooldowns:OnDisable() end  -- luacheck: ignore 212/self
-
-Noctis:RegisterModule(EssentialCooldowns)
