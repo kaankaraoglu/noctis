@@ -318,7 +318,7 @@ function Fader:RegisterSettings(category, layout, db) -- luacheck: ignore 212/se
                     Noctis:SetSafeAlpha(state.frame, 1.0)
                 end
             end)
-            Settings.CreateCheckbox(category, setting, "Enable or disable fading for " .. descriptor.displayName)
+            Settings.CreateCheckbox(category, setting, descriptor.displayName)
         end
     end
 end
